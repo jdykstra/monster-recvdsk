@@ -23,7 +23,7 @@ else:
 serialPortBaud = 9600 
 
 diskBlockSize = 512         # Defined by UCSD Pascal
-diskBlockCount = 2464       # Blocks in an "optimized" volumeuc
+diskBlockCount = 2464       # Blocks in an "optimized" volume
 
 cleol = "\033[K"            #  Clear to end of line ANSI escape sequence
 
@@ -32,7 +32,7 @@ def main(argv=None):
 
     try:
         port = serial.Serial(portIdentifier, serialPortBaud, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, 
-                             stopbits=serial.STOPBITS_ONE, rtscts=True)
+                             stopbits=serial.STOPBITS_ONE, rtscts=True, exclusive=True)
 
         
     except Exception as e:
@@ -42,7 +42,16 @@ def main(argv=None):
     while True:
         while True:
             try:
-                port.reset_input_buffer()      #  Discard any buffered garbage
+                # We want to make sure that there is no buffered up garbage on the serial port, but
+                # reset_input_buffer doesn't seem to be doing the job, and 
+                # https://github.com/pyserial/pyserial/issues/344 implies that it can't.
+                # Work around this by discarding input characters until there are none for a couple
+                # of seconds.
+                while port.in_waiting > 0:
+                    print("Discarding buffered serial data...")
+                    port.read(port.in_waiting)
+                    time.sleep(4)
+                port.reset_input_buffer()      #  Do it anyway, even though it may be a no-op
                 filename = input("Enter filename (empty to quit):")
                 if (not len(filename)):
                     return
