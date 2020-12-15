@@ -25,6 +25,10 @@ serialPortBaud = 9600
 diskBlockSize = 512         # Defined by UCSD Pascal
 diskBlockCount = 2464       # Blocks in an "optimized" volume
 
+diskDirBlock = 2            # Block number containing start of UCSD directory
+diskDirLengthOffset = 2     # Byte offset of directory length byte
+diskDirCount = {6, 10}      # Blocks in a UCSD volume directory
+
 cleol = "\033[K"            #  Clear to end of line ANSI escape sequence
 
 
@@ -66,6 +70,10 @@ def main(argv=None):
                 block = port.read(diskBlockSize)
                 f.write(block)
                 print("Block {0:04d}:  {1}...".format(blockNumber, "".join("{:02x}".format(block[i]) for i in range(32)), cleol))    
+
+            # Paranoid check to make sure we didn't pick up any extra bytes at the start of the transfer.
+            if blockNumber == diskDirBlock and block[diskDirLengOffset] not in diskDirCount:
+               raise("Illegal UCSD directory size.")
             
         except Exception as e:
                 print("Error:  {0}".format(e))
